@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+##
+## EPITECH PROJECT, 2024
+## automakefile
+## File description:
+## create a makefile
+##
+
+error_case()
+{
+    if [[ -z "$1" ]]; then
+        exit 84;
+    fi
+    if [ ! -f "$1" ]; then
+        exit 84;
+    fi
+}
+
+if_set_projectdir()
+{
+    local verif=0
+    while read -r line
+    do
+        temp_cut="$(awk -F ";" ' {print $1} ' <<< "$line")"
+        if [ "$temp_cut" == "PROJECT_DIR" ]; then
+            project_dir="$temp_cut"
+            path="$(awk -F ";" ' {print $2} ' <<< "$line")";
+            path+='/Makefile';
+            verif=1;
+        fi
+    done < "$1"
+    if [ "$verif" != 1 ]; then
+        exit 84;
+    fi
+}
+
+stockage_of_information_of_configfile()
+{
+    index=0;
+
+    while read -r line
+    do
+        temp_cut="$(awk -F ";" '{print $1}' <<< "$line")"
+        if [ "$temp_cut" == "EXEC" ]; then
+            exec="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "CC" ]; then
+            cc="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "SOURCES_DIR" ]; then
+            source_dir="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "CFLAGS" ]; then
+            flags="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "HEADERS_DIR" ]; then
+            header_dir="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "LIBS_DIR" ]; then
+            lib_dir="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "BCK_DIR" ]; then
+            bck_dir="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "ZIP" ]; then
+            zipp="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "ZIPFLAGS" ]; then
+            zipflag="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "UNZIP" ]; then
+            unzipp="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "UNZIPFLAGS" ]; then
+            nzippf="$(echo $line | cut -f2 -d ';')"
+        fi
+        if [ "$temp_cut" == "LDFLAGS" ]; then
+            ldflag="$(echo $line | cut -f2 -d ';')"
+        fi
+        if grep -sq '.c' <<< "$temp_cut"; then
+            source_tab[index]="$temp_cut";
+            ((index++))
+        fi
+    done < "$1"
+}
+
+writing_in_Makefile()
+{
+    >$path
+    if [ "${#source_tab[@]}" != 0 ]; then
+        limit=$((${#source_tab[@]} - 1));
+        echo -e -n "SRC =\t$source_dir/$source_tab" >> $path
+        echo ' \'  >> $path
+        for i in $(seq 1 $limit)
+        do
+            echo -e -n "\t$source_dir/${source_tab[i]}" >> $path
+            echo ' \'  >> $path
+        done
+        echo "" >> $path
+        echo -e 'OBJ =\t$(SRC:.c=.o)\n' >> $path
+    fi
+    if [[ -n $cc ]]; then
+        echo -e "CC =\t$cc\n" >> $path
+    fi
+    if [[ -n $flags ]]; then
+        echo -e "CFLAGS =\t$flags\n" >> $path
+    fi
+    if [[ -n $ldflag ]]; then
+        echo -e "LDFLAGS =\t$ldflag\n" >> $path
+    fi
+    if [[ -n $exec ]]; then
+        echo -e "NAME =\t$exec\n" >> $path
+    fi
+    echo -e '$(NAME):\t$(OBJ)' >> $path
+    if [[ -z $ldflag ]]; then
+        echo -e -n '\t$(CC) -o $(NAME) $(OBJ) $(CFLAGS)' >> $path
+    else
+        echo -e -n '\t$(CC) -o $(NAME) $(OBJ) $(CFLAGS) $(LDFLAGS)' >> $path
+    fi
+    echo -e " -L $source_dir/$lib_dir -I $source_dir/$header_dir\n" >> $path
+    echo -e 'all:\t$(NAME)\n' >> $path
+    echo -e 'clean:' >> $path
+    echo -e '\trm -rf $(OBJ)' >> $path
+    echo -e '\trm -rf *.gcno' >> $path
+    echo -e '\trm -rf *.gcda' >> $path
+    echo -e '\trm -rf *.c.gcov' >> $path
+    echo -e '\trm -rf *~\n' >> $path
+    echo -e 'fclean:\tclean' >> $path
+    echo -e '\trm -rf $(NAME)\n' >> $path
+    echo -e "re:\tfclean all\n" >> $path
+}
+
+version_manager()
+{
+    if [[ -n $zipp ]]; then
+        echo -e "archive:" >> $path
+        echo -e "\t$zipp $zipflag $source_dir/$bck_dir/$project_dir.$zipp $source_dir/*.c" >> $path
+        echo -e -n '\t\t@echo "' >> $path
+        echo -e -n "$source_dir/$bck_dir/$project_dir.$zipp " >> $path
+        echo -e 'file generated."\n' >> $path
+    fi
+    if [[ -n $unzipp ]]; then
+        echo -e "revert:" >> $path
+        echo -e "\t$unzipp $nzippf $source_dir/$bck_dir/*.$unzipp\n" >> $path
+    fi
+    echo -e 'num:' >> $path
+    echo -e '\t@echo "$(MAKE_VERSION)"\n' >> $path
+    echo -e 'delete:' >> $path
+    echo -e "\trm -rf $source_dir/$bck_dir/*.$zipp" >> $path
+}
+
+error_case $1
+echo -e "" >> $1
+if_set_projectdir $1
+stockage_of_information_of_configfile $1
+writing_in_Makefile
+version_manager
